@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Объявление</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f5f5f7;
+            color: #1d1d1f;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            color: #0066cc;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .back-link:hover {
+            gap: 0.75rem;
+        }
+
+        .ad-card {
+            background: white;
+            border-radius: 1.5rem;
+            padding: 2rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .ad-title {
+            font-size: 1.75rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.75rem;
+            line-height: 1.3;
+        }
+
+        .ad-price {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+        }
+
+        .ad-price::before {
+            content: '₽';
+            margin-right: 0.25rem;
+        }
+
+        .ad-description {
+            font-size: 1rem;
+            line-height: 1.6;
+            color: #3a3a3e;
+            margin-bottom: 2rem;
+            white-space: pre-wrap;
+        }
+
+        .ad-meta {
+            padding-top: 1.5rem;
+            border-top: 1px solid #e8e8ed;
+            font-size: 0.875rem;
+            color: #8e8e93;
+        }
+
+        .loading-state, .error-state {
+            text-align: center;
+            padding: 3rem;
+            background: white;
+            border-radius: 1.5rem;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-link">
+            ← Назад к объявлениям
+        </a>
+
+        <div id="content" class="loading-state">
+            Загрузка объявления...
+        </div>
+    </div>
+
+    <script>
+        const adId = window.location.pathname.split('/').pop();
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatPrice(price) {
+            return price.toLocaleString('ru-RU');
+        }
+
+        async function loadAd() {
+            try {
+                const response = await fetch(`/api/ads/${adId}`);
+                
+                if (!response.ok) throw new Error('Not found');
+                
+                const ad = await response.json();
+                
+                document.getElementById('content').innerHTML = `
+                    <div class="ad-card">
+                        <h1 class="ad-title">${escapeHtml(ad.title)}</h1>
+                        <div class="ad-price">${formatPrice(ad.price)}</div>
+                        <div class="ad-description">${escapeHtml(ad.description)}</div>
+                        <div class="ad-meta">
+                            Создано: ${new Date(ad.createdAt).toLocaleDateString('ru-RU')}
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('content').innerHTML = `
+                    <div class="error-state">
+                        Объявление не найдено
+                    </div>
+                `;
+            }
+        }
+
+        loadAd();
+    </script>
+</body>
+</html>
