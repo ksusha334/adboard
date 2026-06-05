@@ -4,7 +4,6 @@
  */
 package com.mycompany.adboard.controller;
 
-import com.mycompany.adboard.dto.AdDto;
 import com.mycompany.adboard.model.Ad;
 import com.mycompany.adboard.service.AdService;
 import org.springframework.beans.factory.annotation.Autowired;

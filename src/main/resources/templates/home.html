@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -28,12 +29,31 @@
             margin-bottom: 2rem;
             padding-bottom: 1rem;
             border-bottom: 1px solid #e8e8ed;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         .header h1 {
             font-size: 1.75rem;
             font-weight: 600;
             letter-spacing: -0.02em;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .username {
+            font-weight: 500;
+            color: #1d1d1f;
+        }
+
+        .logout-link {
+            color: #0066cc;
+            text-decoration: none;
         }
 
         .ads-list {
@@ -123,6 +143,10 @@
     <div class="container">
         <div class="header">
             <h1>Объявления</h1>
+            <div class="user-info">
+                <span class="username" sec:authentication="name"></span>
+                <a href="/perform_logout" class="logout-link">Выйти</a>
+            </div>
         </div>
 
         <div class="ads-list" id="adsList"></div>
@@ -195,9 +219,8 @@
                     return;
                 }
                 
-                // Добавляем объявления в список
                 ads.forEach(ad => {
-                    adsList.innerHTML += renderAd(ad);
+                    adsList.insertAdjacentHTML('beforeend', renderAd(ad));
                 });
                 
                 currentPage++;
@@ -206,8 +229,6 @@
                 if (!hasMore) {
                     loadingState.classList.add('hidden');
                     endState.classList.remove('hidden');
-                } else {
-                    loadingState.classList.remove('hidden');
                 }
                 
             } catch (error) {
@@ -224,19 +245,16 @@
             loadAds();
         }
 
-        // Простой scroll-детектор (работает 100%)
         function handleScroll() {
             const scrollPosition = window.innerHeight + window.scrollY;
-            const threshold = document.body.scrollHeight - 300;
+            const threshold = document.body.scrollHeight - 400;
             
             if (scrollPosition >= threshold && !isLoading && hasMore) {
                 loadAds();
             }
         }
-
-        window.addEventListener('scroll', handleScroll);
         
-        // Первая загрузка
+        window.addEventListener('scroll', handleScroll);
         loadAds();
     </script>
 </body>
