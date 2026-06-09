@@ -56,7 +56,6 @@
             text-decoration: none;
         }
 
-        /* Панель сортировки */
         .sort-panel {
             margin-bottom: 1.5rem;
             display: flex;
@@ -178,7 +177,6 @@
             </div>
         </div>
 
-        <!-- Панель сортировки -->
         <div class="sort-panel">
             <label>Сортировать:</label>
             <select id="sortSelect">
@@ -211,6 +209,7 @@
         let isLoading = false;
         let hasMore = true;
         let currentSort = 'date_desc';
+        let savedScrollRestored = false;
         const pageSize = 9;
 
         const adsGrid = document.getElementById('adsGrid');
@@ -218,6 +217,63 @@
         const errorState = document.getElementById('errorState');
         const endState = document.getElementById('endState');
         const sortSelect = document.getElementById('sortSelect');
+
+        // Получаем имя текущего пользователя из шапки
+        function getCurrentUsername() {
+            const usernameSpan = document.querySelector('.username');
+            return usernameSpan ? usernameSpan.textContent.trim() : 'anonymous';
+        }
+
+        // Сохраняем позицию скролла в localStorage
+        function saveScrollPosition() {
+            const username = getCurrentUsername();
+            const scrollPosition = window.scrollY;
+            localStorage.setItem('scrollPosition_' + username, scrollPosition);
+            localStorage.setItem('scrollPage_' + username, currentPage);
+            localStorage.setItem('scrollSort_' + username, currentSort);
+        }
+
+        // Восстанавливаем позицию скролла после загрузки данных
+        function restoreScrollPosition() {
+            const username = getCurrentUsername();
+            const savedPosition = localStorage.getItem('scrollPosition_' + username);
+            const savedPage = localStorage.getItem('scrollPage_' + username);
+            const savedSort = localStorage.getItem('scrollSort_' + username);
+            
+            if (savedPosition && savedPage && savedSort && !savedScrollRestored) {
+                // Если пользователь менял сортировку — не восстанавливаем позицию
+                if (savedSort !== currentSort) {
+                    console.log('Сортировка изменилась, позиция не восстановлена');
+                    return;
+                }
+                
+                // Ждём, пока загрузится столько страниц, сколько было сохранено
+                const targetPage = parseInt(savedPage);
+                if (targetPage > currentPage) {
+                    console.log('Нужно догрузить до страницы ' + targetPage);
+                    const interval = setInterval(() => {
+                        if (currentPage >= targetPage && !isLoading) {
+                            clearInterval(interval);
+                            setTimeout(() => {
+                                window.scrollTo(0, parseInt(savedPosition));
+                                savedScrollRestored = true;
+                                console.log('Восстановлена позиция: ' + savedPosition);
+                            }, 200);
+                        } else if (!hasMore) {
+                            clearInterval(interval);
+                        } else if (!isLoading && currentPage < targetPage) {
+                            loadAds();
+                        }
+                    }, 500);
+                } else {
+                    setTimeout(() => {
+                        window.scrollTo(0, parseInt(savedPosition));
+                        savedScrollRestored = true;
+                        console.log('Восстановлена позиция: ' + savedPosition);
+                    }, 500);
+                }
+            }
+        }
 
         function getSortParams() {
             const parts = currentSort.split('_');
@@ -227,6 +283,7 @@
         function resetAndLoad() {
             currentPage = 0;
             hasMore = true;
+            savedScrollRestored = false;
             adsGrid.innerHTML = '';
             endState.classList.add('hidden');
             loadAds();
@@ -294,6 +351,9 @@
                     loadingState.classList.add('hidden');
                 }
                 
+                // Пытаемся восстановить позицию после загрузки
+                restoreScrollPosition();
+                
             } catch (error) {
                 console.error('Ошибка:', error);
                 loadingState.classList.add('hidden');
@@ -312,18 +372,34 @@
             const scrollPosition = window.innerHeight + window.scrollY;
             const threshold = document.body.scrollHeight - 400;
             
+            // Сохраняем позицию при скролле (не чаще раза в секунду)
+            if (window.lastSaveScroll && Date.now() - window.lastSaveScroll < 500) {
+                // ничего не делаем
+            } else {
+                window.lastSaveScroll = Date.now();
+                saveScrollPosition();
+            }
+            
             if (scrollPosition >= threshold && !isLoading && hasMore) {
                 loadAds();
             }
         }
         
-        // При смене сортировки сбрасываем ленту
         sortSelect.onchange = () => {
             currentSort = sortSelect.value;
+            // При смене сортировки очищаем сохранённую позицию
+            const username = getCurrentUsername();
+            localStorage.removeItem('scrollPosition_' + username);
+            localStorage.removeItem('scrollPage_' + username);
             resetAndLoad();
         };
         
         window.addEventListener('scroll', handleScroll);
+        
+        // Сохраняем позицию перед уходом со страницы
+        window.addEventListener('beforeunload', saveScrollPosition);
+        
+        // Загружаем первую страницу
         loadAds();
     </script>
 </body>
