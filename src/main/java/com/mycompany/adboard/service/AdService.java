@@ -6,6 +6,7 @@ package com.mycompany.adboard.service;
 
 import com.mycompany.adboard.model.Ad;
 import com.mycompany.adboard.repository.AdRepository;
+import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
@@ -23,9 +24,23 @@ public class AdService {
     @Autowired
     private AdRepository adRepository;
     
+    private final ConcurrentHashMap<String, Page<Ad>> pageCache = new ConcurrentHashMap<>();
+    
     public Page<Ad> getAdsPaginated(int page, int size) {
+        String cacheKey = page + ":" + size;
+        
+        if (pageCache.containsKey(cacheKey)) {
+            System.out.println("Возвращаем страницу " + page + " из кэша");
+            return pageCache.get(cacheKey);
+        }
+        
+        System.out.println("Загружаем страницу " + page + " из базы данных");
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        return adRepository.findAll(pageable);
+        Page<Ad> result = adRepository.findAll(pageable);
+        
+        pageCache.put(cacheKey, result);
+        
+        return result;
     }
     
     public Ad getAdById(Long id) {
@@ -46,5 +61,10 @@ public class AdService {
             }
             System.out.println("Добавлено 100 тестовых объявлений с картинками");
         }
+    }
+    
+    public void clearCache() {
+        pageCache.clear();
+        System.out.println("Кэш очищен");
     }
 }
