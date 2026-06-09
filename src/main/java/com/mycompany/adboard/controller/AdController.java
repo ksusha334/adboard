@@ -39,9 +39,11 @@ public class AdController {
     @GetMapping
     public List<AdDto> getAds(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "6") int size) {
+            @RequestParam(defaultValue = "9") int size,
+            @RequestParam(defaultValue = "date") String sortBy,
+            @RequestParam(defaultValue = "desc") String order) {
         
-        Page<Ad> adPage = adService.getAdsPaginated(page, size);
+        Page<Ad> adPage = adService.getAdsPaginated(page, size, sortBy, order);
         
         return adPage.getContent().stream()
                 .map(AdDto::new)

@@ -32,12 +32,13 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
         }
 
         .header h1 {
             font-size: 1.75rem;
             font-weight: 600;
-            letter-spacing: -0.02em;
         }
 
         .user-info {
@@ -48,12 +49,36 @@
 
         .username {
             font-weight: 500;
-            color: #1d1d1f;
         }
 
         .logout-link {
             color: #0066cc;
             text-decoration: none;
+        }
+
+        /* Панель сортировки */
+        .sort-panel {
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: white;
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
+        }
+
+        .sort-panel label {
+            font-size: 0.875rem;
+            color: #666;
+        }
+
+        .sort-panel select {
+            padding: 0.5rem 1rem;
+            border: 1px solid #d1d1d6;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            background: white;
+            cursor: pointer;
         }
 
         .ads-grid {
@@ -66,9 +91,9 @@
             background: white;
             border-radius: 1rem;
             overflow: hidden;
-            transition: all 0.2s ease;
             cursor: pointer;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
         }
 
         .ad-card:hover {
@@ -87,11 +112,6 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            transition: transform 0.3s ease;
-        }
-
-        .ad-card:hover .ad-image img {
-            transform: scale(1.02);
         }
 
         .ad-content {
@@ -102,17 +122,11 @@
             font-size: 1rem;
             font-weight: 600;
             margin-bottom: 0.5rem;
-            color: #1d1d1f;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
         }
 
         .ad-price {
             font-size: 1.25rem;
             font-weight: 700;
-            color: #1d1d1f;
         }
 
         .ad-price::before {
@@ -122,7 +136,7 @@
 
         .loading-state, .error-state, .end-state {
             text-align: center;
-            padding: 2rem 1.5rem;
+            padding: 2rem;
             color: #8e8e93;
         }
 
@@ -146,7 +160,6 @@
             background: white;
             border: 1px solid #d1d1d6;
             border-radius: 0.5rem;
-            font-size: 0.875rem;
             cursor: pointer;
         }
 
@@ -163,6 +176,17 @@
                 <span class="username" sec:authentication="name"></span>
                 <a href="/perform_logout" class="logout-link">Выйти</a>
             </div>
+        </div>
+
+        <!-- Панель сортировки -->
+        <div class="sort-panel">
+            <label>Сортировать:</label>
+            <select id="sortSelect">
+                <option value="date_desc">Новые сначала</option>
+                <option value="date_asc">Старые сначала</option>
+                <option value="price_asc">Цена (дешёвые)</option>
+                <option value="price_desc">Цена (дорогие)</option>
+            </select>
         </div>
 
         <div class="ads-grid" id="adsGrid"></div>
@@ -186,12 +210,27 @@
         let currentPage = 0;
         let isLoading = false;
         let hasMore = true;
+        let currentSort = 'date_desc';
         const pageSize = 9;
 
         const adsGrid = document.getElementById('adsGrid');
         const loadingState = document.getElementById('loadingState');
         const errorState = document.getElementById('errorState');
         const endState = document.getElementById('endState');
+        const sortSelect = document.getElementById('sortSelect');
+
+        function getSortParams() {
+            const parts = currentSort.split('_');
+            return { sortBy: parts[0], order: parts[1] };
+        }
+
+        function resetAndLoad() {
+            currentPage = 0;
+            hasMore = true;
+            adsGrid.innerHTML = '';
+            endState.classList.add('hidden');
+            loadAds();
+        }
 
         function escapeHtml(text) {
             if (!text) return '';
@@ -225,8 +264,10 @@
             loadingState.classList.remove('hidden');
             errorState.classList.add('hidden');
             
+            const { sortBy, order } = getSortParams();
+            
             try {
-                const response = await fetch(`/api/ads?page=${currentPage}&size=${pageSize}`);
+                const response = await fetch(`/api/ads?page=${currentPage}&size=${pageSize}&sortBy=${sortBy}&order=${order}`);
                 
                 if (!response.ok) throw new Error('Ошибка сети');
                 
@@ -249,10 +290,12 @@
                 if (!hasMore) {
                     loadingState.classList.add('hidden');
                     endState.classList.remove('hidden');
+                } else {
+                    loadingState.classList.add('hidden');
                 }
                 
             } catch (error) {
-                console.error('Ошибка загрузки:', error);
+                console.error('Ошибка:', error);
                 loadingState.classList.add('hidden');
                 errorState.classList.remove('hidden');
             } finally {
@@ -273,6 +316,12 @@
                 loadAds();
             }
         }
+        
+        // При смене сортировки сбрасываем ленту
+        sortSelect.onchange = () => {
+            currentSort = sortSelect.value;
+            resetAndLoad();
+        };
         
         window.addEventListener('scroll', handleScroll);
         loadAds();

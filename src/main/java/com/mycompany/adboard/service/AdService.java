@@ -26,16 +26,19 @@ public class AdService {
     
     private final ConcurrentHashMap<String, Page<Ad>> pageCache = new ConcurrentHashMap<>();
     
-    public Page<Ad> getAdsPaginated(int page, int size) {
-        String cacheKey = page + ":" + size;
+    public Page<Ad> getAdsPaginated(int page, int size, String sortBy, String order) {
+        String cacheKey = page + ":" + size + ":" + sortBy + ":" + order;
         
         if (pageCache.containsKey(cacheKey)) {
             System.out.println("Возвращаем страницу " + page + " из кэша");
             return pageCache.get(cacheKey);
         }
         
+        String sortField = "price".equals(sortBy) ? "price" : "createdAt";
+        Sort.Direction direction = "desc".equalsIgnoreCase(order) ? Sort.Direction.DESC : Sort.Direction.ASC;
+        
         System.out.println("Загружаем страницу " + page + " из базы данных");
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortField));
         Page<Ad> result = adRepository.findAll(pageable);
         
         pageCache.put(cacheKey, result);
