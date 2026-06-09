@@ -56,32 +56,30 @@
             text-decoration: none;
         }
 
-        /* ===== КНОПКА "ЗАГРУЗИТЬ ЕЩЁ" ===== */
-        .load-more-btn {
-            display: block;
-            width: 220px;
-            margin: 20px auto 20px auto;
-            padding: 12px 24px;
-            background-color: white;
-            border: 1px solid #0066cc;
-            border-radius: 40px;
-            color: #0066cc;
-            font-size: 1rem;
-            font-weight: 500;
+        /* Панель сортировки */
+        .sort-panel {
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: white;
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
+        }
+
+        .sort-panel label {
+            font-size: 0.875rem;
+            color: #666;
+        }
+
+        .sort-panel select {
+            padding: 0.5rem 1rem;
+            border: 1px solid #d1d1d6;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            background: white;
             cursor: pointer;
-            transition: all 0.2s ease;
-            text-align: center;
         }
-
-        .load-more-btn:hover {
-            background-color: #0066cc;
-            color: white;
-        }
-
-        /*.load-more-btn.hidden {
-           display: none;
-        } */
-        /* ================================ */
 
         .ads-grid {
             display: grid;
@@ -180,10 +178,18 @@
             </div>
         </div>
 
-        <div class="ads-grid" id="adsGrid"></div>
+        <!-- Панель сортировки -->
+        <div class="sort-panel">
+            <label>Сортировать:</label>
+            <select id="sortSelect">
+                <option value="date_desc">Новые сначала</option>
+                <option value="date_asc">Старые сначала</option>
+                <option value="price_asc">Цена (дешёвые)</option>
+                <option value="price_desc">Цена (дорогие)</option>
+            </select>
+        </div>
 
-        <!-- ===== НОВАЯ КНОПКА ===== -->
-        <button id="loadMoreBtn" class="load-more-btn">Загрузить ещё</button>
+        <div class="ads-grid" id="adsGrid"></div>
 
         <div id="loadingState" class="loading-state">
             <div class="spinner"></div>
@@ -204,13 +210,27 @@
         let currentPage = 0;
         let isLoading = false;
         let hasMore = true;
+        let currentSort = 'date_desc';
         const pageSize = 9;
 
         const adsGrid = document.getElementById('adsGrid');
         const loadingState = document.getElementById('loadingState');
         const errorState = document.getElementById('errorState');
         const endState = document.getElementById('endState');
-        const loadMoreBtn = document.getElementById('loadMoreBtn');
+        const sortSelect = document.getElementById('sortSelect');
+
+        function getSortParams() {
+            const parts = currentSort.split('_');
+            return { sortBy: parts[0], order: parts[1] };
+        }
+
+        function resetAndLoad() {
+            currentPage = 0;
+            hasMore = true;
+            adsGrid.innerHTML = '';
+            endState.classList.add('hidden');
+            loadAds();
+        }
 
         function escapeHtml(text) {
             if (!text) return '';
@@ -239,41 +259,41 @@
 
         async function loadAds() {
             if (isLoading || !hasMore) return;
-
+            
             isLoading = true;
             loadingState.classList.remove('hidden');
-            loadMoreBtn.classList.add('hidden');
             errorState.classList.add('hidden');
-
+            
+            const { sortBy, order } = getSortParams();
+            
             try {
-                const response = await fetch(`/api/ads?page=${currentPage}&size=${pageSize}`);
+                const response = await fetch(`/api/ads?page=${currentPage}&size=${pageSize}&sortBy=${sortBy}&order=${order}`);
+                
                 if (!response.ok) throw new Error('Ошибка сети');
-
+                
                 const ads = await response.json();
-
+                
                 if (ads.length === 0) {
                     hasMore = false;
                     loadingState.classList.add('hidden');
                     endState.classList.remove('hidden');
                     return;
                 }
-
+                
                 ads.forEach(ad => {
                     adsGrid.insertAdjacentHTML('beforeend', renderAd(ad));
                 });
-
+                
                 currentPage++;
                 hasMore = ads.length === pageSize;
-
+                
                 if (!hasMore) {
                     loadingState.classList.add('hidden');
                     endState.classList.remove('hidden');
                 } else {
                     loadingState.classList.add('hidden');
-                    // ПОКАЗЫВАЕМ КНОПКУ
-                    loadMoreBtn.classList.remove('hidden');
                 }
-
+                
             } catch (error) {
                 console.error('Ошибка:', error);
                 loadingState.classList.add('hidden');
@@ -288,19 +308,21 @@
             loadAds();
         }
 
-        // ===== СКРОЛЛ (оставляем) =====
         function handleScroll() {
             const scrollPosition = window.innerHeight + window.scrollY;
             const threshold = document.body.scrollHeight - 400;
-
+            
             if (scrollPosition >= threshold && !isLoading && hasMore) {
                 loadAds();
             }
         }
-
-        // ===== НОВОЕ: КНОПКА "ЗАГРУЗИТЬ ЕЩЁ" =====
-        loadMoreBtn.onclick = () => loadAds();
-
+        
+        // При смене сортировки сбрасываем ленту
+        sortSelect.onchange = () => {
+            currentSort = sortSelect.value;
+            resetAndLoad();
+        };
+        
         window.addEventListener('scroll', handleScroll);
         loadAds();
     </script>

@@ -56,7 +56,7 @@ class AdServiceTest {
 
         when(adRepository.findAll(any(PageRequest.class))).thenReturn(expectedPage);
 
-        Page<Ad> result = adService.getAdsPaginated(page, size);
+        Page<Ad> result = adService.getAdsPaginated(page, size, "date", "desc");
 
         assertNotNull(result);
         assertEquals(1, result.getTotalElements());
