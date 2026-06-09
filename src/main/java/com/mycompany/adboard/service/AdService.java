@@ -35,17 +35,16 @@ public class AdService {
     public void addTestAds() {
         if (adRepository.count() == 0) {
             for (int i = 1; i <= 100; i++) {
+                String imageUrl = "https://picsum.photos/300/200?random=" + i;
                 Ad ad = new Ad(
                     "Объявление " + i,
-                    "Описание объявления номер " + i + ". " + 
-                    "Это тестовое объявление для проверки бесконечной подгрузки. " +
-                    "Если вы это читаете, значит подгрузка работает правильно.",
+                    "Полное описание объявления номер " + i + ". Здесь может быть любой текст.", 
                     1000.0 + (i * 100) % 50000,
-                    null 
+                    imageUrl
                 );
                 adRepository.save(ad);
             }
-            System.out.println("Добавлено 100 тестовых объявлений");
+            System.out.println("Добавлено 100 тестовых объявлений с картинками");
         }
     }
 }
