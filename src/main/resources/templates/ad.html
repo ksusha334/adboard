@@ -40,8 +40,28 @@
         .ad-card {
             background: white;
             border-radius: 1.5rem;
-            padding: 2rem;
+            overflow: hidden;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .ad-image {
+            width: 100%;
+            max-height: 400px;
+            background: #e8e8ed;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .ad-image img {
+            width: 100%;
+            height: auto;
+            object-fit: contain;
+        }
+
+        .ad-content {
+            padding: 2rem;
         }
 
         .ad-title {
@@ -125,11 +145,16 @@
                 
                 document.getElementById('content').innerHTML = `
                     <div class="ad-card">
-                        <h1 class="ad-title">${escapeHtml(ad.title)}</h1>
-                        <div class="ad-price">${formatPrice(ad.price)}</div>
-                        <div class="ad-description">${escapeHtml(ad.description)}</div>
-                        <div class="ad-meta">
-                            Создано: ${new Date(ad.createdAt).toLocaleDateString('ru-RU')}
+                        <div class="ad-image">
+                            <img src="${ad.imageUrl || 'https://picsum.photos/600/400?random=' + ad.id}" alt="${escapeHtml(ad.title)}">
+                        </div>
+                        <div class="ad-content">
+                            <h1 class="ad-title">${escapeHtml(ad.title)}</h1>
+                            <div class="ad-price">${formatPrice(ad.price)}</div>
+                            <div class="ad-description">${escapeHtml(ad.description)}</div>
+                            <div class="ad-meta">
+                                Создано: ${new Date(ad.createdAt).toLocaleDateString('ru-RU')}
+                            </div>
                         </div>
                     </div>
                 `;

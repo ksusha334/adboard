@@ -20,7 +20,7 @@
         }
 
         .container {
-            max-width: 900px;
+            max-width: 1200px;
             margin: 0 auto;
             padding: 2rem 1.5rem;
         }
@@ -56,52 +56,68 @@
             text-decoration: none;
         }
 
-        .ads-list {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
+        .ads-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
         }
 
-        .ad-item {
+        .ad-card {
             background: white;
             border-radius: 1rem;
-            padding: 1.25rem;
+            overflow: hidden;
             transition: all 0.2s ease;
             cursor: pointer;
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.05);
         }
 
-        .ad-item:hover {
-            transform: translateX(4px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        .ad-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px -12px rgba(0, 0, 0, 0.15);
+        }
+
+        .ad-image {
+            width: 100%;
+            height: 200px;
+            background-color: #e8e8ed;
+            overflow: hidden;
+        }
+
+        .ad-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+
+        .ad-card:hover .ad-image img {
+            transform: scale(1.02);
+        }
+
+        .ad-content {
+            padding: 1rem;
         }
 
         .ad-title {
-            font-size: 1.125rem;
+            font-size: 1rem;
             font-weight: 600;
             margin-bottom: 0.5rem;
             color: #1d1d1f;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
 
         .ad-price {
             font-size: 1.25rem;
             font-weight: 700;
             color: #1d1d1f;
-            margin-bottom: 0.5rem;
         }
 
         .ad-price::before {
             content: '₽';
             margin-right: 0.125rem;
-        }
-
-        .ad-description {
-            font-size: 0.875rem;
-            color: #8e8e93;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
         }
 
         .loading-state, .error-state, .end-state {
@@ -149,7 +165,7 @@
             </div>
         </div>
 
-        <div class="ads-list" id="adsList"></div>
+        <div class="ads-grid" id="adsGrid"></div>
 
         <div id="loadingState" class="loading-state">
             <div class="spinner"></div>
@@ -170,9 +186,9 @@
         let currentPage = 0;
         let isLoading = false;
         let hasMore = true;
-        const pageSize = 10;
+        const pageSize = 9;
 
-        const adsList = document.getElementById('adsList');
+        const adsGrid = document.getElementById('adsGrid');
         const loadingState = document.getElementById('loadingState');
         const errorState = document.getElementById('errorState');
         const endState = document.getElementById('endState');
@@ -190,10 +206,14 @@
 
         function renderAd(ad) {
             return `
-                <div class="ad-item" onclick="location.href='/ad/${ad.id}'">
-                    <div class="ad-title">${escapeHtml(ad.title)}</div>
-                    <div class="ad-price">${formatPrice(ad.price)}</div>
-                    <div class="ad-description">${escapeHtml(ad.description)}</div>
+                <div class="ad-card" onclick="location.href='/ad/${ad.id}'">
+                    <div class="ad-image">
+                        <img src="${ad.imageUrl || 'https://picsum.photos/300/200?random=' + ad.id}" alt="${escapeHtml(ad.title)}" loading="lazy">
+                    </div>
+                    <div class="ad-content">
+                        <div class="ad-title">${escapeHtml(ad.title)}</div>
+                        <div class="ad-price">${formatPrice(ad.price)}</div>
+                    </div>
                 </div>
             `;
         }
@@ -220,7 +240,7 @@
                 }
                 
                 ads.forEach(ad => {
-                    adsList.insertAdjacentHTML('beforeend', renderAd(ad));
+                    adsGrid.insertAdjacentHTML('beforeend', renderAd(ad));
                 });
                 
                 currentPage++;

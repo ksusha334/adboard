@@ -24,10 +24,19 @@ public class Ad {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
+    @Column(nullable = false, length = 200)
     private String title;
-    private String description;
+    
+    @Column(length = 1000)
+    private String description; 
+    
+    @Column(nullable = false)
     private Double price;
-    private String imageUrl;
+    
+    @Column(name = "image_url", length = 500)
+    private String imageUrl; 
+    
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
     
     public Ad() {}
