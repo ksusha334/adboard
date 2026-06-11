@@ -37,11 +37,13 @@ public class AdService {
         System.out.println("Загружаем страницу " + page + " из базы данных");
         String sortField = "price".equals(sortBy) ? "price" : "createdAt";
         Sort.Direction direction = "desc".equalsIgnoreCase(order) ? Sort.Direction.DESC : Sort.Direction.ASC;
-        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortField));
+        
+        Sort sort = Sort.by(direction, sortField).and(Sort.by(Sort.Direction.ASC, "id"));
+        Pageable pageable = PageRequest.of(page, size, sort);
+
         Page<Ad> result = adRepository.findAll(pageable);
-        
         pageCache.put(cacheKey, result);
-        
+
         return result;
     }
     
