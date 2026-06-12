@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Лента объявлений</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f5f5f7;
+            color: #1d1d1f;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #e8e8ed;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .header h1 {
+            font-size: 1.75rem;
+            font-weight: 600;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .username {
+            font-weight: 500;
+        }
+
+        .logout-link {
+            color: #0066cc;
+            text-decoration: none;
+        }
+
+        .sort-panel {
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: white;
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
+        }
+
+        .sort-panel label {
+            font-size: 0.875rem;
+            color: #666;
+        }
+
+        .sort-panel select {
+            padding: 0.5rem 1rem;
+            border: 1px solid #d1d1d6;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            background: white;
+            cursor: pointer;
+        }
+
+        .ads-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .ad-card {
+            background: white;
+            border-radius: 1rem;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .ad-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px -12px rgba(0, 0, 0, 0.15);
+        }
+
+        .ad-image {
+            width: 100%;
+            height: 200px;
+            background-color: #e8e8ed;
+            overflow: hidden;
+        }
+
+        .ad-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .ad-content {
+            padding: 1rem;
+        }
+
+        .ad-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .ad-price {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .ad-price::before {
+            content: '₽';
+            margin-right: 0.125rem;
+        }
+
+        .loading-state, .error-state, .end-state {
+            text-align: center;
+            padding: 2rem;
+            color: #8e8e93;
+        }
+
+        .spinner {
+            width: 32px;
+            height: 32px;
+            margin: 0 auto 0.75rem;
+            border: 2px solid #e8e8ed;
+            border-top-color: #0066cc;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-state button {
+            margin-top: 0.75rem;
+            padding: 0.5rem 1.25rem;
+            background: white;
+            border: 1px solid #d1d1d6;
+            border-radius: 0.5rem;
+            cursor: pointer;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Объявления</h1>
+            <div class="user-info">
+                <span class="username" sec:authentication="name"></span>
+                <a href="/perform_logout" class="logout-link">Выйти</a>
+            </div>
+        </div>
+
+        <div class="sort-panel">
+            <label>Сортировать:</label>
+            <select id="sortSelect">
+                <option value="date_desc">Новые сначала</option>
+                <option value="date_asc">Старые сначала</option>
+                <option value="price_asc">Цена (дешёвые)</option>
+                <option value="price_desc">Цена (дорогие)</option>
+            </select>
+        </div>
+
+        <div class="ads-grid" id="adsGrid"></div>
+
+        <div id="loadingState" class="loading-state hidden">
+            <div class="spinner"></div>
+            <p>Загрузка объявлений</p>
+        </div>
+
+        <div id="errorState" class="error-state hidden">
+            <p>Не удалось загрузить объявления. Проверьте соединение с интернетом.</p>
+            <button id="retryBtn">Повторить попытку</button>
+        </div>
+
+        <div id="endState" class="end-state hidden">
+            <p>Все объявления загружены</p>
+        </div>
+    </div>
+
+    <script>
+        let currentPage = 0;
+        let isLoading = false;
+        let hasMore = true;
+        let isError = false;
+        let currentSort = 'date_desc';
+        let initialLoadDone = false;
+        const pageSize = 9;
+
+        const adsGrid = document.getElementById('adsGrid');
+        const loadingState = document.getElementById('loadingState');
+        const errorState = document.getElementById('errorState');
+        const endState = document.getElementById('endState');
+        const sortSelect = document.getElementById('sortSelect');
+        const retryBtn = document.getElementById('retryBtn');
+
+        // ========== СОХРАНЕНИЕ ПОЗИЦИИ СКРОЛЛА ==========
+        function getCurrentUsername() {
+            const usernameSpan = document.querySelector('.username');
+            return usernameSpan ? usernameSpan.textContent.trim() : 'anonymous';
+        }
+
+        function saveScrollPosition() {
+            const username = getCurrentUsername();
+            localStorage.setItem('scrollPosition_' + username, window.scrollY);
+            localStorage.setItem('scrollPage_' + username, currentPage);
+            localStorage.setItem('scrollSort_' + username, currentSort);
+            console.log('Сохранена позиция:', window.scrollY, 'страница:', currentPage);
+        }
+
+        function restoreScrollPosition() {
+            const username = getCurrentUsername();
+            const savedPosition = localStorage.getItem('scrollPosition_' + username);
+            const savedPage = localStorage.getItem('scrollPage_' + username);
+            const savedSort = localStorage.getItem('scrollSort_' + username);
+            
+            console.log('Проверка сохранённых данных:', { savedPosition, savedPage, savedSort });
+            
+            if (savedPosition && savedPage && savedSort && savedSort === currentSort) {
+                const targetPage = parseInt(savedPage);
+                console.log('Нужно восстановить позицию', savedPosition, 'на странице', targetPage);
+                
+                if (targetPage > currentPage) {
+                    const interval = setInterval(() => {
+                        if (currentPage >= targetPage && !isLoading) {
+                            clearInterval(interval);
+                            setTimeout(() => {
+                                window.scrollTo(0, parseInt(savedPosition));
+                                console.log('Позиция восстановлена:', savedPosition);
+                                localStorage.removeItem('scrollPosition_' + username);
+                                localStorage.removeItem('scrollPage_' + username);
+                                localStorage.removeItem('scrollSort_' + username);
+                            }, 200);
+                        } else if (!hasMore) {
+                            clearInterval(interval);
+                        } else if (!isLoading && currentPage < targetPage) {
+                            loadAds();
+                        }
+                    }, 500);
+                } else {
+                    setTimeout(() => {
+                        window.scrollTo(0, parseInt(savedPosition));
+                        console.log('Позиция восстановлена (сразу):', savedPosition);
+                        localStorage.removeItem('scrollPosition_' + username);
+                        localStorage.removeItem('scrollPage_' + username);
+                        localStorage.removeItem('scrollSort_' + username);
+                    }, 300);
+                }
+            }
+        }
+        // ===============================================
+
+        function getSortParams() {
+            const parts = currentSort.split('_');
+            return { sortBy: parts[0], order: parts[1] };
+        }
+
+        function resetAndLoad() {
+            currentPage = 0;
+            hasMore = true;
+            isError = false;
+            adsGrid.innerHTML = '';
+            endState.classList.add('hidden');
+            errorState.classList.add('hidden');
+            loadingState.classList.add('hidden');
+            loadAds();
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatPrice(price) {
+            return price.toLocaleString('ru-RU');
+        }
+
+        function renderAd(ad) {
+            return `
+                <div class="ad-card" onclick="location.href='/ad/${ad.id}'">
+                    <div class="ad-image">
+                        <img src="${ad.imageUrl || 'https://picsum.photos/300/200?random=' + ad.id}" alt="${escapeHtml(ad.title)}" loading="lazy">
+                    </div>
+                    <div class="ad-content">
+                        <div class="ad-title">${escapeHtml(ad.title)}</div>
+                        <div class="ad-price">${formatPrice(ad.price)}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function loadAds() {
+            if (isLoading) {
+                console.log('Уже загружается, пропускаем');
+                return;
+            }
+            if (!hasMore) {
+                console.log('Больше нет данных, пропускаем');
+                return;
+            }
+            if (isError) {
+                console.log('В режиме ошибки, загрузка заблокирована до нажатия Повторить');
+                return;
+            }
+            
+            isLoading = true;
+            loadingState.classList.remove('hidden');
+            errorState.classList.add('hidden');
+            
+            const { sortBy, order } = getSortParams();
+            
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
+                
+                const response = await fetch(`/api/ads?page=${currentPage}&size=${pageSize}&sortBy=${sortBy}&order=${order}`, {
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) {
+                    throw new Error('Ошибка сервера: ' + response.status);
+                }
+                
+                const ads = await response.json();
+                
+                if (ads.length === 0) {
+                    hasMore = false;
+                    loadingState.classList.add('hidden');
+                    if (adsGrid.children.length === 0) {
+                        endState.innerHTML = '<p>Нет объявлений</p>';
+                    }
+                    endState.classList.remove('hidden');
+                    isLoading = false;
+                    return;
+                }
+                
+                ads.forEach(ad => {
+                    adsGrid.insertAdjacentHTML('beforeend', renderAd(ad));
+                });
+                
+                currentPage++;
+                hasMore = ads.length === pageSize;
+                
+                loadingState.classList.add('hidden');
+                
+                if (!hasMore) {
+                    endState.classList.remove('hidden');
+                }
+                isError = false;
+                
+            } catch (error) {
+                console.error('Ошибка загрузки:', error);
+                isError = true;
+                hasMore = false;  
+                loadingState.classList.add('hidden');
+                errorState.classList.remove('hidden');
+                
+            } finally {
+                isLoading = false;
+            }
+        }
+
+        async function retryLoad() {
+            errorState.classList.add('hidden');
+            isError = false;
+            hasMore = true;
+            await loadAds();
+        }
+
+        function handleScroll() {
+            if (isLoading) return;
+            if (!hasMore) return;
+            if (isError) return;
+            
+            const scrollPosition = window.innerHeight + window.scrollY;
+            const threshold = document.body.scrollHeight - 500;
+            
+            // Сохраняем позицию при скролле (не чаще раза в секунду)
+            if (window.lastSaveScroll && Date.now() - window.lastSaveScroll < 500) {
+                // ничего не делаем
+            } else {
+                window.lastSaveScroll = Date.now();
+                saveScrollPosition();
+            }
+            
+            if (scrollPosition >= threshold) {
+                console.log('Скролл: загружаем страницу ' + currentPage);
+                loadAds();
+            }
+        }
+        
+        // Сохраняем позицию перед уходом со страницы
+        window.addEventListener('beforeunload', saveScrollPosition);
+        
+        sortSelect.onchange = () => {
+            currentSort = sortSelect.value;
+            isError = false;
+            hasMore = true;
+            currentPage = 0;
+            isLoading = false;
+            adsGrid.innerHTML = '';
+            endState.classList.add('hidden');
+            errorState.classList.add('hidden');
+            loadingState.classList.add('hidden');
+            loadAds();
+        };
+        
+        retryBtn.onclick = () => {
+            console.log('Пользователь нажал Повторить');
+            retryLoad();
+        };
+        
+        window.addEventListener('scroll', handleScroll);
+        
+        loadAds();
+        
+        // Восстанавливаем позицию после загрузки
+        setTimeout(restoreScrollPosition, 1000);
+    </script>
+</body>
+</html>

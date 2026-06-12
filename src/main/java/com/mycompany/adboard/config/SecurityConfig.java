@@ -4,13 +4,15 @@
  */
 package com.mycompany.adboard.config;
 
+import com.mycompany.adboard.domain.User;
+import com.mycompany.adboard.entity.UserEntity;
 import com.mycompany.adboard.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.core.userdetails.User;
+
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -30,11 +32,11 @@ public class SecurityConfig {
     @Bean
     public UserDetailsService userDetailsService() {
         return username -> {
-            var appUser = userService.findByUsername(username);
+            User appUser = userService.findByUsername(username);
             if (appUser == null) {
                 throw new UsernameNotFoundException("User not found: " + username);
             }
-            return User
+            return org.springframework.security.core.userdetails.User
                 .withUsername(appUser.getUsername())
                 .password(appUser.getPassword())
                 .roles(appUser.getRole())

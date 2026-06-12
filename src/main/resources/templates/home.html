@@ -56,7 +56,6 @@
             text-decoration: none;
         }
 
-        /* Панель сортировки */
         .sort-panel {
             margin-bottom: 1.5rem;
             display: flex;
@@ -178,7 +177,6 @@
             </div>
         </div>
 
-        <!-- Панель сортировки -->
         <div class="sort-panel">
             <label>Сортировать:</label>
             <select id="sortSelect">
@@ -191,14 +189,14 @@
 
         <div class="ads-grid" id="adsGrid"></div>
 
-        <div id="loadingState" class="loading-state">
+        <div id="loadingState" class="loading-state hidden">
             <div class="spinner"></div>
             <p>Загрузка объявлений</p>
         </div>
 
         <div id="errorState" class="error-state hidden">
-            <p>Не удалось загрузить объявления</p>
-            <button onclick="retryLoad()">Повторить</button>
+            <p>Не удалось загрузить объявления. Проверьте соединение с интернетом.</p>
+            <button id="retryBtn">Повторить попытку</button>
         </div>
 
         <div id="endState" class="end-state hidden">
@@ -210,7 +208,9 @@
         let currentPage = 0;
         let isLoading = false;
         let hasMore = true;
+        let isError = false;
         let currentSort = 'date_desc';
+        let initialLoadDone = false;
         const pageSize = 9;
 
         const adsGrid = document.getElementById('adsGrid');
@@ -218,6 +218,63 @@
         const errorState = document.getElementById('errorState');
         const endState = document.getElementById('endState');
         const sortSelect = document.getElementById('sortSelect');
+        const retryBtn = document.getElementById('retryBtn');
+
+        // ========== СОХРАНЕНИЕ ПОЗИЦИИ СКРОЛЛА ==========
+        function getCurrentUsername() {
+            const usernameSpan = document.querySelector('.username');
+            return usernameSpan ? usernameSpan.textContent.trim() : 'anonymous';
+        }
+
+        function saveScrollPosition() {
+            const username = getCurrentUsername();
+            localStorage.setItem('scrollPosition_' + username, window.scrollY);
+            localStorage.setItem('scrollPage_' + username, currentPage);
+            localStorage.setItem('scrollSort_' + username, currentSort);
+            console.log('Сохранена позиция:', window.scrollY, 'страница:', currentPage);
+        }
+
+        function restoreScrollPosition() {
+            const username = getCurrentUsername();
+            const savedPosition = localStorage.getItem('scrollPosition_' + username);
+            const savedPage = localStorage.getItem('scrollPage_' + username);
+            const savedSort = localStorage.getItem('scrollSort_' + username);
+            
+            console.log('Проверка сохранённых данных:', { savedPosition, savedPage, savedSort });
+            
+            if (savedPosition && savedPage && savedSort && savedSort === currentSort) {
+                const targetPage = parseInt(savedPage);
+                console.log('Нужно восстановить позицию', savedPosition, 'на странице', targetPage);
+                
+                if (targetPage > currentPage) {
+                    const interval = setInterval(() => {
+                        if (currentPage >= targetPage && !isLoading) {
+                            clearInterval(interval);
+                            setTimeout(() => {
+                                window.scrollTo(0, parseInt(savedPosition));
+                                console.log('Позиция восстановлена:', savedPosition);
+                                localStorage.removeItem('scrollPosition_' + username);
+                                localStorage.removeItem('scrollPage_' + username);
+                                localStorage.removeItem('scrollSort_' + username);
+                            }, 200);
+                        } else if (!hasMore) {
+                            clearInterval(interval);
+                        } else if (!isLoading && currentPage < targetPage) {
+                            loadAds();
+                        }
+                    }, 500);
+                } else {
+                    setTimeout(() => {
+                        window.scrollTo(0, parseInt(savedPosition));
+                        console.log('Позиция восстановлена (сразу):', savedPosition);
+                        localStorage.removeItem('scrollPosition_' + username);
+                        localStorage.removeItem('scrollPage_' + username);
+                        localStorage.removeItem('scrollSort_' + username);
+                    }, 300);
+                }
+            }
+        }
+        // ===============================================
 
         function getSortParams() {
             const parts = currentSort.split('_');
@@ -227,8 +284,11 @@
         function resetAndLoad() {
             currentPage = 0;
             hasMore = true;
+            isError = false;
             adsGrid.innerHTML = '';
             endState.classList.add('hidden');
+            errorState.classList.add('hidden');
+            loadingState.classList.add('hidden');
             loadAds();
         }
 
@@ -258,7 +318,18 @@
         }
 
         async function loadAds() {
-            if (isLoading || !hasMore) return;
+            if (isLoading) {
+                console.log('Уже загружается, пропускаем');
+                return;
+            }
+            if (!hasMore) {
+                console.log('Больше нет данных, пропускаем');
+                return;
+            }
+            if (isError) {
+                console.log('В режиме ошибки, загрузка заблокирована до нажатия Повторить');
+                return;
+            }
             
             isLoading = true;
             loadingState.classList.remove('hidden');
@@ -267,16 +338,29 @@
             const { sortBy, order } = getSortParams();
             
             try {
-                const response = await fetch(`/api/ads?page=${currentPage}&size=${pageSize}&sortBy=${sortBy}&order=${order}`);
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
                 
-                if (!response.ok) throw new Error('Ошибка сети');
+                const response = await fetch(`/api/ads?page=${currentPage}&size=${pageSize}&sortBy=${sortBy}&order=${order}`, {
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) {
+                    throw new Error('Ошибка сервера: ' + response.status);
+                }
                 
                 const ads = await response.json();
                 
                 if (ads.length === 0) {
                     hasMore = false;
                     loadingState.classList.add('hidden');
+                    if (adsGrid.children.length === 0) {
+                        endState.innerHTML = '<p>Нет объявлений</p>';
+                    }
                     endState.classList.remove('hidden');
+                    isLoading = false;
                     return;
                 }
                 
@@ -287,44 +371,81 @@
                 currentPage++;
                 hasMore = ads.length === pageSize;
                 
+                loadingState.classList.add('hidden');
+                
                 if (!hasMore) {
-                    loadingState.classList.add('hidden');
                     endState.classList.remove('hidden');
-                } else {
-                    loadingState.classList.add('hidden');
                 }
+                isError = false;
                 
             } catch (error) {
-                console.error('Ошибка:', error);
+                console.error('Ошибка загрузки:', error);
+                isError = true;
+                hasMore = false;  
                 loadingState.classList.add('hidden');
                 errorState.classList.remove('hidden');
+                
             } finally {
                 isLoading = false;
             }
         }
 
-        function retryLoad() {
+        async function retryLoad() {
             errorState.classList.add('hidden');
-            loadAds();
+            isError = false;
+            hasMore = true;
+            await loadAds();
         }
 
         function handleScroll() {
-            const scrollPosition = window.innerHeight + window.scrollY;
-            const threshold = document.body.scrollHeight - 400;
+            if (isLoading) return;
+            if (!hasMore) return;
+            if (isError) return;
             
-            if (scrollPosition >= threshold && !isLoading && hasMore) {
+            const scrollPosition = window.innerHeight + window.scrollY;
+            const threshold = document.body.scrollHeight - 500;
+            
+            // Сохраняем позицию при скролле (не чаще раза в секунду)
+            if (window.lastSaveScroll && Date.now() - window.lastSaveScroll < 500) {
+                // ничего не делаем
+            } else {
+                window.lastSaveScroll = Date.now();
+                saveScrollPosition();
+            }
+            
+            if (scrollPosition >= threshold) {
+                console.log('Скролл: загружаем страницу ' + currentPage);
                 loadAds();
             }
         }
         
-        // При смене сортировки сбрасываем ленту
+        // Сохраняем позицию перед уходом со страницы
+        window.addEventListener('beforeunload', saveScrollPosition);
+        
         sortSelect.onchange = () => {
             currentSort = sortSelect.value;
-            resetAndLoad();
+            isError = false;
+            hasMore = true;
+            currentPage = 0;
+            isLoading = false;
+            adsGrid.innerHTML = '';
+            endState.classList.add('hidden');
+            errorState.classList.add('hidden');
+            loadingState.classList.add('hidden');
+            loadAds();
+        };
+        
+        retryBtn.onclick = () => {
+            console.log('Пользователь нажал Повторить');
+            retryLoad();
         };
         
         window.addEventListener('scroll', handleScroll);
+        
         loadAds();
+        
+        // Восстанавливаем позицию после загрузки
+        setTimeout(restoreScrollPosition, 1000);
     </script>
 </body>
 </html>

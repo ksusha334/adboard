@@ -58,10 +58,11 @@ public class AuthController {
             return "register";
         }
         
-        boolean success = userService.registerUser(username, password, email);
+        String userEmail = (email != null && !email.isEmpty()) ? email : username + "@local.com";
+        boolean success = userService.registerUser(username, password, userEmail);
         
         if (success) {
-            redirectAttributes.addFlashAttribute("successMessage", "Регистрация прошла успешно! Теперь вы можете войти.");
+            redirectAttributes.addFlashAttribute("successMessage", "Регистрация прошла успешно");
             return "redirect:/login";
         } else {
             model.addAttribute("errorMessage", "Пользователь с таким именем уже существует");

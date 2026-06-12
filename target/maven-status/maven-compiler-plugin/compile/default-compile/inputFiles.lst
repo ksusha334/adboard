@@ -1,0 +1,17 @@
+/Users/march/NetBeansProjects/adboard/src/main/java/com/mycompany/adboard/dto/AdDto.java
+/Users/march/NetBeansProjects/adboard/src/main/java/com/mycompany/adboard/mapper/UserMapper.java
+/Users/march/NetBeansProjects/adboard/src/main/java/com/mycompany/adboard/domain/Ad.java
+/Users/march/NetBeansProjects/adboard/src/main/java/com/mycompany/adboard/service/AdService.java
+/Users/march/NetBeansProjects/adboard/src/main/java/com/mycompany/adboard/entity/UserEntity.java
+/Users/march/NetBeansProjects/adboard/src/main/java/com/mycompany/adboard/entity/AdEntity.java
+/Users/march/NetBeansProjects/adboard/src/main/java/com/mycompany/adboard/controller/HomeController.java
+/Users/march/NetBeansProjects/adboard/src/main/java/com/mycompany/adboard/config/SecurityConfig.java
+/Users/march/NetBeansProjects/adboard/src/main/java/com/mycompany/adboard/repository/AdRepository.java
+/Users/march/NetBeansProjects/adboard/src/main/java/com/mycompany/adboard/service/UserService.java
+/Users/march/NetBeansProjects/adboard/src/main/java/com/mycompany/adboard/controller/AdController.java
+/Users/march/NetBeansProjects/adboard/src/main/java/com/mycompany/adboard/domain/User.java
+/Users/march/NetBeansProjects/adboard/src/main/java/com/mycompany/adboard/mapper/AdMapper.java
+/Users/march/NetBeansProjects/adboard/src/main/java/com/mycompany/adboard/controller/AuthController.java
+/Users/march/NetBeansProjects/adboard/src/main/java/com/mycompany/adboard/dto/UserDto.java
+/Users/march/NetBeansProjects/adboard/src/main/java/com/mycompany/adboard/AdboardApplication.java
+/Users/march/NetBeansProjects/adboard/src/main/java/com/mycompany/adboard/repository/UserRepository.java
