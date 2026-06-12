@@ -4,7 +4,7 @@
  */
 package com.mycompany.adboard.service;
 
-import com.mycompany.adboard.model.User;
+import com.mycompany.adboard.entity.UserEntity;
 import com.mycompany.adboard.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,12 +14,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
-import java.util.Optional;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
-
 /**
  *
  * @author march
@@ -33,53 +30,42 @@ class UserServiceTest {
     @InjectMocks
     private UserService userService;
 
-    private User testUser;
+    private UserEntity testUserEntity;
 
     @BeforeEach
     void setUp() {
-        testUser = new User("testuser", new BCryptPasswordEncoder().encode("password123"), "test@example.com");
-        testUser.setId(1L);
+        testUserEntity = new UserEntity("testuser", "encodedPassword", "test@example.com", "USER");
+        testUserEntity.setId(1L);
     }
 
     @Test
     void registerUser_WhenUsernameIsFree_ShouldReturnTrue() {
         when(userRepository.existsByUsername("newuser")).thenReturn(false);
-        when(userRepository.save(any(User.class))).thenReturn(testUser);
+        when(userRepository.existsByEmail("new@example.com")).thenReturn(false);
+        when(userRepository.save(any(UserEntity.class))).thenReturn(testUserEntity);
 
         boolean result = userService.registerUser("newuser", "password123", "new@example.com");
 
         assertTrue(result);
-        verify(userRepository, times(1)).save(any(User.class));
+        verify(userRepository, times(1)).save(any(UserEntity.class));
     }
 
     @Test
-    void registerUser_WhenUsernameAlreadyExists_ShouldReturnFalse() {
+    void registerUser_WhenUsernameExists_ShouldReturnFalse() {
         when(userRepository.existsByUsername("existinguser")).thenReturn(true);
 
         boolean result = userService.registerUser("existinguser", "password123", "test@example.com");
 
         assertFalse(result);
-        verify(userRepository, never()).save(any(User.class));
+        verify(userRepository, never()).save(any(UserEntity.class));
     }
 
     @Test
-    void findByUsername_WhenUserExists_ShouldReturnUser() {
-        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+    void registerUser_WhenPasswordTooShort_ShouldReturnFalse() {
+        boolean result = userService.registerUser("newuser", "123", "new@example.com");
 
-        User result = userService.findByUsername("testuser");
-
-        assertNotNull(result);
-        assertEquals("testuser", result.getUsername());
-        assertEquals("test@example.com", result.getEmail());
-    }
-
-    @Test
-    void findByUsername_WhenUserDoesNotExist_ShouldReturnNull() {
-        when(userRepository.findByUsername("unknown")).thenReturn(Optional.empty());
-
-        User result = userService.findByUsername("unknown");
-
-        assertNull(result);
+        assertFalse(result);
+        verify(userRepository, never()).save(any(UserEntity.class));
     }
 
     @Test

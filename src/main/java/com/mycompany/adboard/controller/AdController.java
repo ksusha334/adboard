@@ -4,13 +4,11 @@
  */
 package com.mycompany.adboard.controller;
 
-import com.mycompany.adboard.model.Ad;
+import com.mycompany.adboard.dto.AdDto;
 import com.mycompany.adboard.service.AdService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
-import java.util.stream.Collectors;
 /**
  *
  * @author march
@@ -19,39 +17,26 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/ads")
 public class AdController {
     
+    private static final int DEFAULT_PAGE = 0;
+    private static final int DEFAULT_SIZE = 9;
+    private static final String DEFAULT_SORT_BY = "date";
+    private static final String DEFAULT_SORT_ORDER = "desc";
+    
     @Autowired
     private AdService adService;
     
-    static class AdDto {
-        public Long id;
-        public String title;
-        public Double price;
-        public String imageUrl;
-        
-        public AdDto(Ad ad) {
-            this.id = ad.getId();
-            this.title = ad.getTitle();
-            this.price = ad.getPrice();
-            this.imageUrl = ad.getImageUrl();
-        }
-    }
-    
     @GetMapping
     public List<AdDto> getAds(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "9") int size,
-            @RequestParam(defaultValue = "date") String sortBy,
-            @RequestParam(defaultValue = "desc") String order) {
+            @RequestParam(defaultValue = DEFAULT_PAGE + "") int page,
+            @RequestParam(defaultValue = DEFAULT_SIZE + "") int size,
+            @RequestParam(defaultValue = DEFAULT_SORT_BY) String sortBy,
+            @RequestParam(defaultValue = DEFAULT_SORT_ORDER) String order) {
         
-        Page<Ad> adPage = adService.getAdsPaginated(page, size, sortBy, order);
-        
-        return adPage.getContent().stream()
-                .map(AdDto::new)
-                .collect(Collectors.toList());
+        return adService.getAdsDto(page, size, sortBy, order);
     }
     
     @GetMapping("/{id}")
-    public Ad getAdById(@PathVariable Long id) {
-        return adService.getAdById(id);
+    public AdDto getAdById(@PathVariable Long id) {
+        return adService.getAdDtoById(id);
     }
 }

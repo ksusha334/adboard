@@ -4,7 +4,9 @@
  */
 package com.mycompany.adboard.repository;
 
-import com.mycompany.adboard.model.Ad;
+import com.mycompany.adboard.entity.AdEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -13,5 +15,6 @@ import org.springframework.stereotype.Repository;
  * @author march
  */
 @Repository
-public interface AdRepository extends JpaRepository<Ad, Long> {
+public interface AdRepository extends JpaRepository<AdEntity, Long> {
+    Page<AdEntity> findByTitleContainingIgnoreCase(String title, Pageable pageable);
 }

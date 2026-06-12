@@ -220,6 +220,62 @@
         const sortSelect = document.getElementById('sortSelect');
         const retryBtn = document.getElementById('retryBtn');
 
+        // ========== СОХРАНЕНИЕ ПОЗИЦИИ СКРОЛЛА ==========
+        function getCurrentUsername() {
+            const usernameSpan = document.querySelector('.username');
+            return usernameSpan ? usernameSpan.textContent.trim() : 'anonymous';
+        }
+
+        function saveScrollPosition() {
+            const username = getCurrentUsername();
+            localStorage.setItem('scrollPosition_' + username, window.scrollY);
+            localStorage.setItem('scrollPage_' + username, currentPage);
+            localStorage.setItem('scrollSort_' + username, currentSort);
+            console.log('Сохранена позиция:', window.scrollY, 'страница:', currentPage);
+        }
+
+        function restoreScrollPosition() {
+            const username = getCurrentUsername();
+            const savedPosition = localStorage.getItem('scrollPosition_' + username);
+            const savedPage = localStorage.getItem('scrollPage_' + username);
+            const savedSort = localStorage.getItem('scrollSort_' + username);
+            
+            console.log('Проверка сохранённых данных:', { savedPosition, savedPage, savedSort });
+            
+            if (savedPosition && savedPage && savedSort && savedSort === currentSort) {
+                const targetPage = parseInt(savedPage);
+                console.log('Нужно восстановить позицию', savedPosition, 'на странице', targetPage);
+                
+                if (targetPage > currentPage) {
+                    const interval = setInterval(() => {
+                        if (currentPage >= targetPage && !isLoading) {
+                            clearInterval(interval);
+                            setTimeout(() => {
+                                window.scrollTo(0, parseInt(savedPosition));
+                                console.log('Позиция восстановлена:', savedPosition);
+                                localStorage.removeItem('scrollPosition_' + username);
+                                localStorage.removeItem('scrollPage_' + username);
+                                localStorage.removeItem('scrollSort_' + username);
+                            }, 200);
+                        } else if (!hasMore) {
+                            clearInterval(interval);
+                        } else if (!isLoading && currentPage < targetPage) {
+                            loadAds();
+                        }
+                    }, 500);
+                } else {
+                    setTimeout(() => {
+                        window.scrollTo(0, parseInt(savedPosition));
+                        console.log('Позиция восстановлена (сразу):', savedPosition);
+                        localStorage.removeItem('scrollPosition_' + username);
+                        localStorage.removeItem('scrollPage_' + username);
+                        localStorage.removeItem('scrollSort_' + username);
+                    }, 300);
+                }
+            }
+        }
+        // ===============================================
+
         function getSortParams() {
             const parts = currentSort.split('_');
             return { sortBy: parts[0], order: parts[1] };
@@ -336,10 +392,8 @@
 
         async function retryLoad() {
             errorState.classList.add('hidden');
-            
             isError = false;
             hasMore = true;
-            
             await loadAds();
         }
 
@@ -351,11 +405,22 @@
             const scrollPosition = window.innerHeight + window.scrollY;
             const threshold = document.body.scrollHeight - 500;
             
+            // Сохраняем позицию при скролле (не чаще раза в секунду)
+            if (window.lastSaveScroll && Date.now() - window.lastSaveScroll < 500) {
+                // ничего не делаем
+            } else {
+                window.lastSaveScroll = Date.now();
+                saveScrollPosition();
+            }
+            
             if (scrollPosition >= threshold) {
                 console.log('Скролл: загружаем страницу ' + currentPage);
                 loadAds();
             }
         }
+        
+        // Сохраняем позицию перед уходом со страницы
+        window.addEventListener('beforeunload', saveScrollPosition);
         
         sortSelect.onchange = () => {
             currentSort = sortSelect.value;
@@ -377,8 +442,10 @@
         
         window.addEventListener('scroll', handleScroll);
         
-
         loadAds();
+        
+        // Восстанавливаем позицию после загрузки
+        setTimeout(restoreScrollPosition, 1000);
     </script>
 </body>
 </html>
