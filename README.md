@@ -131,16 +131,6 @@ http://localhost:8080
 export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home
 java -jar target/adboard-1.0-SNAPSHOT.jar
 ```
-
-### Windows (`run.bat`)
-
-```batch
-@echo off
-set JAVA_HOME=C:\Program Files\Java\jdk-21
-java -jar target/adboard-1.0-SNAPSHOT.jar
-pause
-```
-
 ---
 
 ## Автор
